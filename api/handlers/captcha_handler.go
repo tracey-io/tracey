@@ -58,14 +58,20 @@ func (h *CaptchaHandler) VerifyCaptcha(ctx echo.Context) error {
 		})
 	}
 
-	if body.Answer == "" || body.Token == "" || body.Nonce == "" || body.Counter == 0 || body.Timestamp == 0 {
+	answer := body.Answer
+	token := body.Token
+	nonce := body.Nonce
+	counter := body.Counter
+	timestamp := body.Timestamp
+
+	if answer == "" || token == "" || nonce == "" || counter == 0 || timestamp == 0 {
 		return ctx.JSON(http.StatusBadRequest, echo.Map{
 			"success": false,
 			"message": "missing required fields",
 		})
 	}
 
-	passToken, err := h.CaptchaService.Verify(body.Answer, body.Token, body.Nonce, body.Counter, body.Timestamp)
+	passToken, err := h.CaptchaService.Verify(answer, token, nonce, counter, timestamp)
 
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, echo.Map{
