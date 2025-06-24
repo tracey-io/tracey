@@ -19,7 +19,7 @@ type Challenge struct {
 	Prompt     string   `json:"prompt"`
 	Options    []string `json:"options"`
 	Token      string   `json:"token"`
-	POWNonce   string   `json:"pow_nonce"`
+	POWNonce   string   `json:"powNonce"`
 	Difficulty int      `json:"difficulty"`
 	Timestamp  int64    `json:"timestamp"`
 }

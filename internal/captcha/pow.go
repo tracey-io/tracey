@@ -8,14 +8,20 @@ import (
 	"time"
 )
 
-const DefaultPOWDifficulty = 20
-
-var DefaultPOWTTL = time.Minute * 2
-
 var (
 	ErrInvalidPOW = errors.New("invalid proof of work")
 	ErrExpiredPOW = errors.New("expired proof of work")
 )
+
+var DefaultPOWConfig = &POWConfig{
+	Difficulty: 20,
+	TTL:        2 * time.Minute,
+}
+
+type POWConfig struct {
+	Difficulty int
+	TTL        time.Duration
+}
 
 type POWChallenge struct {
 	Nonce      string `json:"nonce"`
@@ -24,34 +30,32 @@ type POWChallenge struct {
 }
 
 type POWManager struct {
-	Difficulty int
-	TTL        time.Duration
+	PowConfig *POWConfig
 }
 
-func NewPOWManager(difficulty int, ttl time.Duration) *POWManager {
+func NewPOWManager(powConfig *POWConfig) *POWManager {
 	return &POWManager{
-		Difficulty: difficulty,
-		TTL:        ttl,
+		PowConfig: powConfig,
 	}
 }
 
 func (p *POWManager) GenerateChallenge() *POWChallenge {
 	return &POWChallenge{
 		Nonce:      uuid.NewString(),
-		Difficulty: p.Difficulty,
+		Difficulty: p.PowConfig.Difficulty,
 		Timestamp:  time.Now().Unix(),
 	}
 }
 
 func (p *POWManager) Verify(nonce string, counter int, issuedAt int64) error {
-	if time.Since(time.Unix(issuedAt, 0)) > p.TTL {
+	if time.Since(time.Unix(issuedAt, 0)) > p.PowConfig.TTL {
 		return ErrExpiredPOW
 	}
 
 	input := fmt.Sprintf("%s:%d", nonce, counter)
 	hash := sha256.Sum256([]byte(input))
 
-	if !hasLeadingZeroBits(hash[:], p.Difficulty) {
+	if !hasLeadingZeroBits(hash[:], p.PowConfig.Difficulty) {
 		return ErrInvalidPOW
 	}
 

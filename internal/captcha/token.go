@@ -17,8 +17,6 @@ const (
 	PassTokenType   PayloadType = "captcha_pass"
 )
 
-var DefaultTokenTTL = 5 * time.Minute
-
 var (
 	ErrInvalidToken      = errors.New("invalid token")
 	ErrExpiredToken      = errors.New("expired token")
@@ -27,15 +25,28 @@ var (
 	ErrWrongTokenType    = errors.New("wrong token type")
 )
 
-type TokenManager struct {
+var (
+	DefaultTokenSecret = []byte("your-secret-key-placeholder")
+	DefaultTokenTTL    = 5 * time.Minute
+)
+
+var DefaultTokenConfig = &TokenConfig{
+	Secret: DefaultTokenSecret,
+	TTL:    DefaultTokenTTL,
+}
+
+type TokenConfig struct {
 	Secret []byte
 	TTL    time.Duration
 }
 
-func NewTokenManager(secret []byte, ttl time.Duration) *TokenManager {
+type TokenManager struct {
+	TokenConfig *TokenConfig
+}
+
+func NewTokenManager(tokenConfig *TokenConfig) *TokenManager {
 	return &TokenManager{
-		Secret: secret,
-		TTL:    ttl,
+		TokenConfig: tokenConfig,
 	}
 }
 
@@ -56,7 +67,7 @@ func (tm *TokenManager) SignAnswerToken(q *Question) (string, error) {
 		Type:   AnswerTokenType,
 		ID:     q.ID,
 		Answer: q.Answer,
-		Exp:    time.Now().Add(tm.TTL).Unix(),
+		Exp:    time.Now().Add(tm.TokenConfig.TTL).Unix(),
 	}
 	return tm.sign(payload)
 }
@@ -64,7 +75,7 @@ func (tm *TokenManager) SignAnswerToken(q *Question) (string, error) {
 func (tm *TokenManager) SignPassToken() (string, error) {
 	payload := PassPayload{
 		Type: PassTokenType,
-		Exp:  time.Now().Add(tm.TTL).Unix(),
+		Exp:  time.Now().Add(tm.TokenConfig.TTL).Unix(),
 	}
 	return tm.sign(payload)
 }
@@ -74,7 +85,7 @@ func (tm *TokenManager) sign(payload any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	mac := hmac.New(sha256.New, tm.Secret)
+	mac := hmac.New(sha256.New, tm.TokenConfig.Secret)
 	mac.Write(data)
 	sig := mac.Sum(nil)
 
@@ -91,7 +102,7 @@ func (tm *TokenManager) VerifyAnswerToken(token string, userAnswer string) (bool
 	data := raw[:len(raw)-sha256.Size]
 	sig := raw[len(raw)-sha256.Size:]
 
-	mac := hmac.New(sha256.New, tm.Secret)
+	mac := hmac.New(sha256.New, tm.TokenConfig.Secret)
 	mac.Write(data)
 	if !hmac.Equal(mac.Sum(nil), sig) {
 		return false, ErrSignatureMismatch
@@ -120,7 +131,7 @@ func (tm *TokenManager) VerifyPassToken(token string) (bool, error) {
 	data := raw[:len(raw)-sha256.Size]
 	sig := raw[len(raw)-sha256.Size:]
 
-	mac := hmac.New(sha256.New, tm.Secret)
+	mac := hmac.New(sha256.New, tm.TokenConfig.Secret)
 	mac.Write(data)
 	if !hmac.Equal(mac.Sum(nil), sig) {
 		return false, ErrSignatureMismatch

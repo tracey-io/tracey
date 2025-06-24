@@ -26,9 +26,15 @@ func StartServer(serverConfig *ServerConfig) error {
 		Output: app.Logger.Output(),
 	}))
 
-	questionManager := captcha.NewQuestionManager(captcha.DefaultCategories)
-	tokenManager := captcha.NewTokenManager([]byte(serverConfig.SecretKey), captcha.DefaultTokenTTL)
-	powManager := captcha.NewPOWManager(captcha.DefaultPOWDifficulty, captcha.DefaultPOWTTL)
+	tokenConfig := &captcha.TokenConfig{
+		Secret: []byte(serverConfig.SecretKey),
+		TTL:    captcha.DefaultTokenTTL,
+	}
+
+	questionManager := captcha.NewQuestionManager(captcha.DefaultQuestionConfig)
+	tokenManager := captcha.NewTokenManager(tokenConfig)
+	powManager := captcha.NewPOWManager(captcha.DefaultPOWConfig)
+
 	captchaService := captcha.NewService(questionManager, tokenManager, powManager)
 	captchaHandler := handlers.NewCaptchaHandler(captchaService)
 
@@ -50,27 +56,6 @@ func StartServer(serverConfig *ServerConfig) error {
 
 		switch serverConfig.Environment {
 		case EnvironmentDev:
-			app.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-				AllowOrigins: []string{
-					"http://localhost:3000",
-					"http://127.0.0.1:3000",
-				},
-				AllowMethods: []string{
-					echo.GET,
-					echo.POST,
-					echo.PUT,
-					echo.DELETE,
-					echo.OPTIONS,
-				},
-				AllowHeaders: []string{
-					echo.HeaderOrigin,
-					echo.HeaderContentType,
-					echo.HeaderAccept,
-					echo.HeaderAuthorization,
-				},
-				AllowCredentials: true,
-			}))
-
 			err = app.Start(serverAddress)
 		case EnvironmentProd:
 			app.AutoTLSManager.Cache = autocert.DirCache("/var/www/.cache")
